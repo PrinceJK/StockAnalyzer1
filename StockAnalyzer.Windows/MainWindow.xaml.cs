@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using StockAnalyzer.Core.Domain;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
-using Newtonsoft.Json;
-using StockAnalyzer.Core.Domain;
-using StockAnalyzer.Windows.Services;
 
 namespace StockAnalyzer.Windows
 {
@@ -36,28 +31,37 @@ namespace StockAnalyzer.Windows
 
             Search.Content = "Cancel";
             #endregion
-
-            var lines = File.ReadAllLines(@"StockPrices_Small.csv");
-
-            var data = new List<StockPrice>();
-
-            foreach (var line in lines.Skip(1))
+            Task.Run(() =>
             {
-                var segments = line.Split(',');
-
-                for (var i = 0; i < segments.Length; i++) segments[i] = segments[i].Trim('\'', '"');
-                var price = new StockPrice
                 {
-                    Ticker = segments[0],
-                    TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
-                    Volume = Convert.ToInt32(segments[6], CultureInfo.InvariantCulture),
-                    Change = Convert.ToDecimal(segments[7], CultureInfo.InvariantCulture),
-                    ChangePercent = Convert.ToDecimal(segments[8], CultureInfo.InvariantCulture),
-                };
-                data.Add(price);
-            }
+                    var lines = File.ReadAllLines(@"StockPrices_Small.csv");
 
-            Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
+                    var data = new List<StockPrice>();
+
+                    foreach (var line in lines.Skip(1))
+                    {
+                        var segments = line.Split(',');
+
+                        for (var i = 0; i < segments.Length; i++) segments[i] = segments[i].Trim('\'', '"');
+                        var price = new StockPrice
+                        {
+                            Ticker = segments[0],
+                            TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
+                            Volume = Convert.ToInt32(segments[6], CultureInfo.InvariantCulture),
+                            Change = Convert.ToDecimal(segments[7], CultureInfo.InvariantCulture),
+                            ChangePercent = Convert.ToDecimal(segments[8], CultureInfo.InvariantCulture),
+                        };
+                        data.Add(price);
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
+                    });
+                }
+            });
+
+          
 
             #region After stock data is loaded
             StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
